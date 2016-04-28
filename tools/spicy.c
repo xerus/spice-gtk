@@ -566,6 +566,70 @@ static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
     }
 }
 
+static void menu_cb_resize_to(GtkAction *action G_GNUC_UNUSED,
+                              gpointer data)
+{
+    SpiceWindow *win = data;
+    GtkWidget *dialog, *enable_display;
+    GtkWidget *spin_width, *spin_height, *spin_x, *spin_y, *spin_id;
+    GtkGrid *grid;
+    gint width, height;
+    dialog = gtk_dialog_new_with_buttons("Resize guest to",
+                                         GTK_WINDOW(win->toplevel),
+                                         GTK_DIALOG_DESTROY_WITH_PARENT,
+                                         "_Apply",
+                                         GTK_RESPONSE_APPLY,
+                                         "_Cancel",
+                                         GTK_RESPONSE_CANCEL,
+                                         NULL);
+
+    enable_display = gtk_switch_new();
+    gtk_switch_set_state(GTK_SWITCH(enable_display), TRUE);
+
+    spin_width = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_height = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_x = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_y = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_id = gtk_spin_button_new_with_range(0, CHANNELID_MAX * MONITORID_MAX - 1, 1);
+
+    gtk_widget_get_preferred_width(win->spice, NULL, &width);
+    gtk_widget_get_preferred_height(win->spice, NULL, &height);
+
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_width), width);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_height), height);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_id), win->id + win->monitor_id);
+
+    grid = GTK_GRID(gtk_grid_new());
+    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dialog))), GTK_WIDGET(grid));
+    gtk_grid_attach(grid, gtk_label_new("Resize the guest display:"), 0, 0, 2, 1);
+    gtk_grid_attach(grid, enable_display, 0, 1, 1, 1);
+    gtk_grid_attach(grid, spin_id, 1, 1, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("width:"), 0, 2, 1, 1);
+    gtk_grid_attach(grid, spin_width, 1, 2, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("height:"), 0, 3, 1, 1);
+    gtk_grid_attach(grid, spin_height, 1, 3, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("x:"), 0, 4, 1, 1);
+    gtk_grid_attach(grid, spin_x, 1, 4, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("y:"), 0, 5, 1, 1);
+    gtk_grid_attach(grid, spin_y, 1, 5, 1, 1);
+
+    gtk_widget_show_all(dialog);
+    if (gtk_dialog_run(GTK_DIALOG (dialog)) == GTK_RESPONSE_APPLY) {
+        spice_main_update_display_enabled(win->conn->main,
+                                          gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_id)),
+                                          gtk_switch_get_state(GTK_SWITCH(enable_display)),
+                                          FALSE);
+        spice_main_set_display(win->conn->main,
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_id)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)));
+        spice_main_send_monitor_config(win->conn->main);
+    }
+    gtk_widget_destroy (dialog);
+}
+
 static void restore_configuration(SpiceWindow *win)
 {
     gboolean state;
@@ -691,6 +755,11 @@ static const GtkActionEntry entries[] = {
         .label       = "_Fullscreen",
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
+    },{
+        .name        = "ResizeTo",
+        .label       = "_Resize to",
+        .callback    = G_CALLBACK(menu_cb_resize_to),
+        .accelerator = "",
     },{
 #ifdef USE_SMARTCARD
 	.name        = "InsertSmartcard",
@@ -905,6 +974,9 @@ static char ui_xml[] =
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
+"    <separator/>\n"
+"    <toolitem action='ResizeTo'/>\n"
+"    <separator/>\n"
 "  </toolbar>\n"
 "</ui>\n";
 
