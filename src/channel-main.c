@@ -17,7 +17,6 @@
 */
 #include "config.h"
 
-#include <math.h>
 #include <spice/vd_agent.h>
 #include <glib/gstdio.h>
 #include <glib/gi18n-lib.h>
@@ -1029,8 +1028,8 @@ static int monitors_cmp(const void *p1, const void *p2, gpointer user_data)
 {
     const VDAgentMonConfig *m1 = p1;
     const VDAgentMonConfig *m2 = p2;
-    double d1 = sqrt(m1->x * m1->x + m1->y * m1->y);
-    double d2 = sqrt(m2->x * m2->x + m2->y * m2->y);
+    double d1 = m1->x * m1->x + m1->y * m1->y;
+    double d2 = m2->x * m2->x + m2->y * m2->y;
     int diff = d1 - d2;
 
     return diff == 0 ? (char*)p1 - (char*)p2 : diff;
