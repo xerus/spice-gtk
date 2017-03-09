@@ -286,7 +286,7 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
     GArray *monitors = NULL;
     int i;
 
-    SPICE_DEBUG("update monitor area %d:%d", d->channel_id, d->monitor_id);
+    SPICE_DISPLAY_DEBUG(display, "update monitor area");
     if (d->monitor_id < 0)
         goto whole;
 
@@ -299,10 +299,10 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
         }
     }
     if (c == NULL) {
-        SPICE_DEBUG("update monitor: no monitor %d", d->monitor_id);
+        SPICE_DISPLAY_DEBUG(display, "update monitor: no monitor %d", d->monitor_id);
         set_monitor_ready(display, false);
         if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
-            SPICE_DEBUG("waiting until MonitorsConfig is received");
+            SPICE_DISPLAY_DEBUG(display, "waiting until MonitorsConfig is received");
             g_clear_pointer(&monitors, g_array_unref);
             return;
         }
@@ -341,7 +341,7 @@ spice_display_set_keypress_delay(SpiceDisplay *display, guint delay)
         delay = strtoul(env, NULL, 10);
 
     if (d->keypress_delay != delay) {
-        SPICE_DEBUG("keypress-delay is set to %u ms", delay);
+        SPICE_DISPLAY_DEBUG(display, "keypress-delay is set to %u ms", delay);
         d->keypress_delay = delay;
         g_object_notify(G_OBJECT(display), "keypress-delay");
     }
@@ -430,7 +430,7 @@ static void spice_display_dispose(GObject *obj)
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("spice display dispose");
+    SPICE_DISPLAY_DEBUG(display, "spice display dispose");
 
     spice_cairo_image_destroy(display);
     g_clear_object(&d->session);
@@ -449,7 +449,7 @@ static void spice_display_finalize(GObject *obj)
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("Finalize spice display");
+    SPICE_DISPLAY_DEBUG(display, "Finalize spice display");
 
     g_clear_pointer(&d->grabseq, spice_grab_sequence_free);
     g_clear_pointer(&d->activeseq, g_free);
@@ -480,10 +480,10 @@ static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
                             gpointer user_data G_GNUC_UNUSED)
 {
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(self));
-    SPICE_DEBUG("%s (implicit: %d, keyboard: %d)", __FUNCTION__,
-                event->implicit, event->keyboard);
-    SPICE_DEBUG("%s (SpiceDisplay::GdkWindow %p, event->grab_window: %p)",
-                __FUNCTION__, window, event->grab_window);
+    SPICE_DISPLAY_DEBUG(self, "%s (implicit: %d, keyboard: %d)", __FUNCTION__,
+                        event->implicit, event->keyboard);
+    SPICE_DISPLAY_DEBUG(self, "%s (SpiceDisplay::GdkWindow %p, event->grab_window: %p)",
+                        __FUNCTION__, window, event->grab_window);
     if (window == event->grab_window) {
         /* ignore grab-broken event moving the grab to GtkEventBox::window
          * (from GtkEventBox::event_window) as we initially called
@@ -543,7 +543,7 @@ static void drag_data_received_callback(SpiceDisplay *self,
     /* We get a buf like:
      * file:///root/a.txt\r\nfile:///root/b.txt\r\n
      */
-    SPICE_DEBUG("%s: drag a file", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(self, "%s: drag a file", __FUNCTION__);
     buf = gtk_selection_data_get_data(data);
     g_return_if_fail(buf != NULL);
 
@@ -567,7 +567,7 @@ static void drag_data_received_callback(SpiceDisplay *self,
 
 static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
 {
-    SPICE_DEBUG("grab notify %d", was_grabbed);
+    SPICE_DISPLAY_DEBUG(display, "grab notify %d", was_grabbed);
 
     if (was_grabbed == FALSE)
         release_keys(display);
@@ -859,7 +859,7 @@ static void try_keyboard_grab(SpiceDisplay *display)
 
     g_return_if_fail(gtk_widget_is_focus(widget));
 
-    SPICE_DEBUG("grab keyboard");
+    SPICE_DISPLAY_DEBUG(display, "grab keyboard");
     gtk_widget_grab_focus(widget);
 
 #ifdef G_OS_WIN32
@@ -898,7 +898,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
     if (!d->keyboard_grab_active)
         return;
 
-    SPICE_DEBUG("ungrab keyboard");
+    SPICE_DISPLAY_DEBUG(display, "ungrab keyboard");
 #if GTK_CHECK_VERSION(3, 20, 0)
     gdk_seat_ungrab(spice_display_get_default_seat(display));
 #else
@@ -937,7 +937,7 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
     GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
 
     if (!GDK_IS_X11_DISPLAY(gdk_window_get_display(w))) {
-        SPICE_DEBUG("FIXME: gtk backend is not X11");
+        SPICE_DISPLAY_DEBUG(display, "FIXME: gtk backend is not X11");
         return;
     }
 
@@ -951,8 +951,8 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
                            &d->x11_accel_numerator, &d->x11_accel_denominator, &d->x11_threshold);
         /* set mouse acceleration to default */
         XChangePointerControl(x_display, True, True, -1, -1, -1);
-        SPICE_DEBUG("disabled X11 mouse motion %d %d %d",
-                    d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
+        SPICE_DISPLAY_DEBUG(display, "disabled X11 mouse motion %d %d %d",
+                            d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
     }
 #elif defined GDK_WINDOWING_WIN32
     if (enabled) {
@@ -1223,9 +1223,11 @@ static void recalc_geometry(GtkWidget *widget)
     if (spice_cairo_is_scaled(display))
         zoom = (gdouble)d->zoom_level / 100;
 
-    SPICE_DEBUG("recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g",
-                d->channel_id, d->monitor_id, d->area.x, d->area.y, d->area.width, d->area.height,
-                d->ww, d->wh, zoom);
+    SPICE_DISPLAY_DEBUG(display,
+                        "recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g",
+                        d->channel_id, d->monitor_id, d->area.x, d->area.y,
+                        d->area.width, d->area.height,
+                        d->ww, d->wh, zoom);
 
     if (d->resize_guest_enable)
         spice_main_set_display(d->main, get_display_id(display),
@@ -1459,7 +1461,7 @@ static void release_keys(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     uint32_t i, b;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
     for (i = 0; i < SPICE_N_ELEMENTS(d->key_state); i++) {
         if (!d->key_state[i]) {
             continue;
@@ -1565,9 +1567,9 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     }
 
 #endif
-    SPICE_DEBUG("%s %s: keycode: %d  state: %u  group %d modifier %d",
-            __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
-            key->hardware_keycode, key->state, key->group, key->is_modifier);
+    SPICE_DISPLAY_DEBUG(display, "%s %s: keycode: %d  state: %u  group %d modifier %d",
+                        __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
+                        key->hardware_keycode, key->state, key->group, key->is_modifier);
 
     if (!d->seq_pressed && check_for_grab_key_pressed(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
@@ -1757,7 +1759,7 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
     g_return_if_fail(SPICE_IS_DISPLAY(display));
     g_return_if_fail(keyvals != NULL);
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
     if (kind & SPICE_DISPLAY_KEY_EVENT_PRESS) {
         for (i = 0 ; i < nkeyvals ; i++)
@@ -1775,7 +1777,7 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
     d->mouse_have_pointer = true;
     spice_gtk_session_set_mouse_has_pointer(d->gtk_session, true);
@@ -1790,7 +1792,7 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
     if (d->mouse_grab_active)
         return true;
@@ -1807,7 +1809,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
     /*
      * Ignore focus in when we already have the focus
@@ -1844,7 +1846,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
     update_display(NULL);
 
     /*
@@ -1981,7 +1983,7 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
     if (!d->inputs)
         return true;
@@ -1993,7 +1995,7 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
     else if (scroll->direction == GDK_SCROLL_DOWN)
         button = SPICE_MOUSE_BUTTON_DOWN;
     else {
-        SPICE_DEBUG("unsupported scroll direction");
+        SPICE_DISPLAY_DEBUG(display, "unsupported scroll direction");
         return true;
     }
 
@@ -2010,9 +2012,9 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     SpiceDisplayPrivate *d = display->priv;
     int x, y;
 
-    SPICE_DEBUG("%s %s: button %u, state 0x%x", __FUNCTION__,
-            button->type == GDK_BUTTON_PRESS ? "press" : "release",
-            button->button, button->state);
+    SPICE_DISPLAY_DEBUG(display, "%s %s: button %u, state 0x%x", __FUNCTION__,
+                        button->type == GDK_BUTTON_PRESS ? "press" : "release",
+                        button->button, button->state);
 
     if (d->disable_inputs)
         return true;
@@ -2439,7 +2441,7 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
     SpiceDisplayPrivate *d = display->priv;
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
-    SPICE_DEBUG("mouse mode %u", d->mouse_mode);
+    SPICE_DISPLAY_DEBUG(display, "mouse mode %u", d->mouse_mode);
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
@@ -2466,7 +2468,7 @@ static void update_area(SpiceDisplay *display,
     SpiceDisplayPrivate *d = display->priv;
     GdkRectangle primary;
 
-    SPICE_DEBUG("update area +%d+%d %dx%d", x, y, width, height);
+    SPICE_DISPLAY_DEBUG(display, "update area +%d+%d %dx%d", x, y, width, height);
     d->area = (GdkRectangle) {
         .x = x,
         .y = y,
@@ -2492,9 +2494,9 @@ static void update_area(SpiceDisplay *display,
         };
     }
 
-    SPICE_DEBUG("primary: %dx%d", primary.width, primary.height);
+    SPICE_DISPLAY_DEBUG(display, "primary: %dx%d", primary.width, primary.height);
     if (!gdk_rectangle_intersect(&primary, &d->area, &d->area)) {
-        SPICE_DEBUG("The monitor area is not intersecting primary surface");
+        SPICE_DISPLAY_DEBUG(display, "The monitor area is not intersecting primary surface");
         memset(&d->area, '\0', sizeof(d->area));
         set_monitor_ready(display, false);
         return;
@@ -2603,7 +2605,7 @@ static void mark(SpiceDisplay *display, gint mark)
     SpiceDisplayPrivate *d = display->priv;
     g_return_if_fail(d != NULL);
 
-    SPICE_DEBUG("widget mark: %d, %d:%d %p", mark, d->channel_id, d->monitor_id, display);
+    SPICE_DISPLAY_DEBUG(display, "widget mark: %d, display %p", mark, display);
     d->mark = mark;
     update_ready(display);
 }
@@ -2780,11 +2782,11 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     if (!window) {
-        SPICE_DEBUG("%s: no window, returning",  __FUNCTION__);
+        SPICE_DISPLAY_DEBUG(display, "%s: no window, returning",  __FUNCTION__);
         return;
     }
 
-    SPICE_DEBUG("%s",  __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s",  __FUNCTION__);
     gdk_window_set_cursor(window, NULL);
 }
 
@@ -2814,7 +2816,7 @@ void spice_display_widget_gl_scanout(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     GError *err = NULL;
 
-    SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s: got scanout",  __FUNCTION__);
 
 #ifdef GDK_WINDOWING_X11
     GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "draw-area");
@@ -2855,7 +2857,7 @@ static void gl_draw(SpiceDisplay *display,
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s",  __FUNCTION__);
+    SPICE_DISPLAY_DEBUG(display, "%s",  __FUNCTION__);
 
     set_egl_enabled(display, true);
 
@@ -2970,7 +2972,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     int id;
 
     g_object_get(channel, "channel-id", &id, NULL);
-    SPICE_DEBUG("channel_destroy %d", id);
+    SPICE_DISPLAY_DEBUG(display, "channel_destroy %d", id);
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         d->main = NULL;
