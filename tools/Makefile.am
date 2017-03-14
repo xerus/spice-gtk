@@ -2,6 +2,7 @@ bin_PROGRAMS = spicy-stats spicy-screenshot
 
 TOOLS_CPPFLAGS =			\
 	-DSPICE_COMPILATION		\
+	-DG_LOG_DOMAIN=\"GSpice\"	\
 	-I$(top_builddir)/src		\
 	-I$(top_srcdir)			\
 	-I$(top_srcdir)/src		\
