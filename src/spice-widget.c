@@ -43,6 +43,7 @@
 #include "spice-gtk-session-priv.h"
 #include "vncdisplaykeymap.h"
 #include "spice-grabsequence-priv.h"
+#include "channel-cursor-gtk.h"
 
 
 /**
@@ -2634,9 +2635,9 @@ static void mark(SpiceDisplay *display, gint mark)
     update_ready(display);
 }
 
-static void cursor_set(SpiceCursorChannel *channel,
-                       gint width, gint height, gint hot_x, gint hot_y,
-                       gpointer rgba, gpointer data)
+static void cursor_set(SpiceCursorChannelGtk *channel_gtk,
+                       G_GNUC_UNUSED GParamSpec *pspec,
+                       gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
@@ -2646,18 +2647,11 @@ static void cursor_set(SpiceCursorChannel *channel,
 
     g_clear_object(&d->mouse_pixbuf);
 
-    if (rgba != NULL) {
-        d->mouse_pixbuf = gdk_pixbuf_new_from_data(g_memdup(rgba, width * height * 4),
-                                                   GDK_COLORSPACE_RGB,
-                                                   TRUE, 8,
-                                                   width,
-                                                   height,
-                                                   width * 4,
-                                                   (GdkPixbufDestroyNotify)g_free, NULL);
-        d->mouse_hotspot.x = hot_x;
-        d->mouse_hotspot.y = hot_y;
+    g_object_get(G_OBJECT(channel_gtk), "cursor-pixbuf", &d->mouse_pixbuf, NULL);
+    if (d->mouse_pixbuf != NULL) {
+        spice_cursor_channel_gtk_get_hotspot(channel_gtk, &d->mouse_hotspot);
         cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
-                                            d->mouse_pixbuf, hot_x, hot_y);
+                                            d->mouse_pixbuf, -1, -1);
     } else
         g_warn_if_reached();
 
@@ -2955,10 +2949,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_CURSOR_CHANNEL(channel)) {
+        SpiceCursorChannelGtk *channel_gtk;
         if (id != d->channel_id)
             return;
         d->cursor = SPICE_CURSOR_CHANNEL(channel);
-        spice_g_signal_connect_object(channel, "cursor-set",
+        channel_gtk = spice_cursor_channel_gtk_get(d->cursor);
+        spice_g_signal_connect_object(channel_gtk, "notify::cursor-pixbuf",
                                       G_CALLBACK(cursor_set), display, 0);
         spice_g_signal_connect_object(channel, "cursor-move",
                                       G_CALLBACK(cursor_move), display, 0);

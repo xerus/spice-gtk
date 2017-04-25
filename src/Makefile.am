@@ -134,6 +134,8 @@ SPICE_GTK_SOURCES_COMMON =		\
 	desktop-integration.c		\
 	desktop-integration.h		\
 	usb-device-widget.c		\
+	channel-cursor-gtk.c		\
+	channel-cursor-gtk.h		\
 	$(NULL)
 
 nodist_SPICE_GTK_SOURCES_COMMON =	\
