@@ -2963,6 +2963,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "cursor-reset",
                                       G_CALLBACK(cursor_reset), display, 0);
         spice_channel_connect(channel);
+
+        /* Set the initial cursor in case the cursor channel has been initialized
+           See https://bugzilla.redhat.com/show_bug.cgi?id=1411380 */
+        if (spice_channel_gtk_has_cursor(channel_gtk)) {
+            cursor_set(channel_gtk, NULL, display);
+        }
         return;
     }
 

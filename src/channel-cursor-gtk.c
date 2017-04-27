@@ -261,3 +261,9 @@ void spice_cursor_channel_gtk_get_hotspot(SpiceCursorChannelGtk *self, GdkPoint 
 
     *hotspot = self->hotspot;
 }
+
+gboolean spice_channel_gtk_has_cursor(SpiceCursorChannelGtk *self)
+{
+    g_return_val_if_fail(SPICE_IS_CURSOR_CHANNEL_GTK(self), FALSE);
+    return self->cursor_pixbuf != NULL;
+}

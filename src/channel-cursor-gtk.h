@@ -45,6 +45,7 @@ GType spice_cursor_channel_gtk_get_type(void);
 
 SpiceCursorChannelGtk *spice_cursor_channel_gtk_get(SpiceCursorChannel *channel);
 void spice_cursor_channel_gtk_get_hotspot(SpiceCursorChannelGtk *self, GdkPoint *hotspot);
+gboolean spice_channel_gtk_has_cursor(SpiceCursorChannelGtk *self);
 
 G_END_DECLS
 
